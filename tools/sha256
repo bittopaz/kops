@@ -7,6 +7,8 @@ set -o pipefail
 in=$1
 out=$2
 
+export PATH=/usr/local/bin/:$PATH
+
 if ( which sha256sum > /dev/null ); then
   (sha256sum $in | cut -d' ' -f1) > $out
 elif ( which shasum > /dev/null ); then
