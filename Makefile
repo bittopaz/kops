@@ -349,7 +349,7 @@ upload: version-dist # Upload kops to S3
 .PHONY: oss-upload
 oss-upload: version-dist
 	@echo "== Uploading kops =="
-	aliyun oss cp --acl public-read -r -f --include "*" ${UPLOAD}/ ${OSS_BUCKET}
+	aliyun oss cp --region ${ALICLOUD_REGION} --acl public-read -r -f --include "*" ${UPLOAD}/ ${OSS_BUCKET}
 
 # gcs-upload builds kops and uploads to GCS
 .PHONY: gcs-upload
