@@ -60,3 +60,8 @@ func getRegionByZones(zones []string) (string, error) {
 
 	return region, nil
 }
+
+// ArrayString is created because some of Alicloud APIs take array string as arguments.
+func ArrayString(a []string) string {
+	return "[\"" + strings.Join(a, "\",\"") + "\"]"
+}

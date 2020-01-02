@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"k8s.io/klog"
 
@@ -143,7 +144,50 @@ func (c *aliCloudImplementation) DeleteGroup(g *cloudinstances.CloudInstanceGrou
 }
 
 func (c *aliCloudImplementation) DeleteInstance(i *cloudinstances.CloudInstanceGroupMember) error {
-	return errors.New("DeleteInstance not implemented on aliCloud")
+	id := i.ID
+	if id == "" {
+		return fmt.Errorf("id was not set on CloudInstanceGroupMember: %v", i)
+	}
+
+	if err := c.EcsClient().StopInstance(id, false); err != nil {
+		return fmt.Errorf("error stopping instance %q: %v", id, err)
+	}
+
+	// Wait for 3 min to stop the instance
+	for i := 0; i < 36; i++ {
+		describeInstanceArgs := &ecs.DescribeInstancesArgs{
+			RegionId:    common.Region(c.Region()),
+			InstanceIds: ArrayString([]string{id}),
+		}
+
+		klog.V(8).Infof("stopping Alicloud ecs instance %q", id)
+		if instances, _, err := c.EcsClient().DescribeInstances(describeInstanceArgs); err != nil {
+			if err != nil {
+				return fmt.Errorf("error describing instance %q: %v", id, err)
+			}
+			if len(instances) != 0 {
+				return fmt.Errorf("one instance is expected, but we got  %v", instances)
+			}
+
+			ins := instances[0]
+			if ins.Status == ecs.Stopped {
+				break
+			}
+		}
+		time.Sleep(time.Second * 5)
+
+		if i == 35 {
+			return fmt.Errorf("fail to stop ecs instance %s in 3 mins", id)
+		}
+	}
+
+	if err := c.EcsClient().DeleteInstance(id); err != nil {
+		return fmt.Errorf("error deleting instance %q: %v", id, err)
+	}
+
+	klog.V(8).Infof("deleted Alicloud ecs instance %q", id)
+
+	return nil
 }
 
 func (c *aliCloudImplementation) FindVPCInfo(id string) (*fi.VPCInfo, error) {
